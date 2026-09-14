@@ -1,0 +1,69 @@
+'use client';
+
+import { useEffect, useState, type FormEvent } from 'react';
+import { createUser, adminUserApiMessage } from '@/lib/admin-user-api';
+import { getCurrentUser } from '@/lib/auth';
+import { roles } from '@/lib/roles';
+import type { Role } from '@/lib/types';
+import { ErrorState, LoadingState } from './ui';
+
+const accountRoles = roles;
+
+export function AdminUserForm() {
+  const [role, setRole] = useState<Role | null>(null);
+  const [form, setForm] = useState({ name: '', email: '', role: 'operator' as Role, password: '', password_confirmation: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    getCurrentUser().then((result) => {
+      if (result.status === 'authenticated') setRole(result.user.role ?? null);
+      else setRole(null);
+    });
+  }, []);
+
+  function update(field: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setError('');
+    setSuccess('');
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (form.password !== form.password_confirmation) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      await createUser(form);
+      setForm({ name: '', email: '', role: 'operator', password: '', password_confirmation: '' });
+      setSuccess('Account created successfully.');
+    } catch (reason) {
+      setError(adminUserApiMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (role === null) return <LoadingState label="Checking Admin access" />;
+  if (role !== 'admin') return <ErrorState title="Admin access required" description="Only Admin users can create accounts." />;
+
+  return <section className="account-panel work-panel">
+    <div className="work-panel__header"><div><p className="eyebrow">User management</p><h2>Create account</h2></div><span>ADMIN ONLY</span></div>
+    <p className="account-panel__intro">Create an account for any of the five system roles.</p>
+    <form className="account-form" onSubmit={submit}>
+      <label className="form-field">Full name<input value={form.name} onChange={(event) => update('name', event.target.value)} autoComplete="name" required /></label>
+      <label className="form-field">Email<input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} autoComplete="email" required /></label>
+      <label className="form-field">Role<select value={form.role} onChange={(event) => update('role', event.target.value)}>{accountRoles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+      <label className="form-field">Password<input type="password" value={form.password} onChange={(event) => update('password', event.target.value)} autoComplete="new-password" minLength={8} required /></label>
+      <label className="form-field">Confirm password<input type="password" value={form.password_confirmation} onChange={(event) => update('password_confirmation', event.target.value)} autoComplete="new-password" minLength={8} required /></label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      {success && <p className="form-success" role="status">{success}</p>}
+      <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Creating account...' : 'Create account'}</button>
+    </form>
+  </section>;
+}
