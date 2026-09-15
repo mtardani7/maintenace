@@ -4,8 +4,8 @@ import type { Ticket, TicketAction, TicketActionInput, TicketFilters, TicketPage
 type TicketCollection = Ticket[] | { data: Ticket[]; meta?: { current_page?: number; last_page?: number; total?: number } };
 
 const paths = {
-  list: process.env.NEXT_PUBLIC_TICKETS_PATH,
-  detail: process.env.NEXT_PUBLIC_TICKET_DETAIL_PATH_TEMPLATE,
+  list: process.env.NEXT_PUBLIC_TICKETS_PATH ?? '/tickets',
+  detail: process.env.NEXT_PUBLIC_TICKET_DETAIL_PATH_TEMPLATE ?? '/tickets/{id}',
   action: process.env.NEXT_PUBLIC_TICKET_ACTION_PATH_TEMPLATE,
   stats: process.env.NEXT_PUBLIC_TICKET_STATS_PATH,
 };
@@ -43,14 +43,32 @@ function replacePath(template: string | undefined, id: Ticket['id'], label: stri
   return requiredPath(template, label).replace('{id}', encodeURIComponent(String(id))).replace('{action}', action ?? '');
 }
 
+function normalizeTicket(ticket: Partial<Ticket> & Record<string, unknown>): Ticket {
+  const machineId = (ticket.machine_id ?? (ticket.machine as { id?: number | string } | undefined)?.id ?? '-') as number | string;
+  const machine = ticket.machine as { id?: number | string; code?: string; name?: string } | undefined;
+  return {
+    id: ticket.id ?? '-',
+    number: String(ticket.number ?? `TKT-${ticket.id ?? '-'}`),
+    machine: { id: machine?.id ?? machineId, code: machine?.code ?? `Mesin #${machineId}`, name: machine?.name ?? `Mesin #${machineId}` },
+    plant: String(ticket.plant ?? ticket.plant_name ?? (ticket.plant_id ? `Plant #${ticket.plant_id}` : '-')),
+    location: String(ticket.location ?? '-'),
+    problemType: String(ticket.problemType ?? ticket.problem_type ?? 'Lainnya'),
+    description: String(ticket.description ?? ''),
+    priority: (ticket.priority ?? 'MEDIUM') as Ticket['priority'],
+    status: (ticket.status ?? 'OPEN') as Ticket['status'],
+    sourceType: (ticket.sourceType ?? ticket.source) as Ticket['sourceType'],
+    createdAt: String(ticket.createdAt ?? ticket.created_at ?? ''),
+  };
+}
+
 export async function getTickets(filters: TicketFilters = {}): Promise<TicketPage> {
   const response = await apiRequest<TicketCollection>(withQuery(requiredPath(paths.list, 'Ticket list'), filters));
-  if (Array.isArray(response)) return { data: response, currentPage: filters.page ?? 1, lastPage: 1, total: response.length };
-  return { data: response.data, currentPage: response.meta?.current_page ?? filters.page ?? 1, lastPage: response.meta?.last_page ?? 1, total: response.meta?.total ?? response.data.length };
+  if (Array.isArray(response)) return { data: response.map((ticket) => normalizeTicket(ticket as Partial<Ticket> & Record<string, unknown>)), currentPage: filters.page ?? 1, lastPage: 1, total: response.length };
+  return { data: response.data.map((ticket) => normalizeTicket(ticket as Partial<Ticket> & Record<string, unknown>)), currentPage: response.meta?.current_page ?? filters.page ?? 1, lastPage: response.meta?.last_page ?? 1, total: response.meta?.total ?? response.data.length };
 }
 
 export function getTicket(id: Ticket['id']) {
-  return apiRequest<Ticket>(replacePath(paths.detail, id, 'Ticket detail'));
+  return apiRequest<Partial<Ticket> & Record<string, unknown>>(replacePath(paths.detail, id, 'Ticket detail')).then((ticket) => normalizeTicket(ticket));
 }
 
 export function getTicketStats() {

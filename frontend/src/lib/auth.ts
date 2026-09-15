@@ -1,9 +1,9 @@
 import { apiRequest, ApiConfigurationError, ApiError } from './api';
 import type { AuthResult, User } from './types';
 
-const mePath = process.env.NEXT_PUBLIC_AUTH_ME_PATH;
-const loginPath = process.env.NEXT_PUBLIC_AUTH_LOGIN_PATH;
-const logoutPath = process.env.NEXT_PUBLIC_AUTH_LOGOUT_PATH ?? '/api/logout';
+const mePath = process.env.NEXT_PUBLIC_AUTH_ME_PATH ?? '/me';
+const loginPath = process.env.NEXT_PUBLIC_AUTH_LOGIN_PATH ?? '/login';
+const logoutPath = process.env.NEXT_PUBLIC_AUTH_LOGOUT_PATH ?? '/logout';
 
 export async function getCurrentUser(): Promise<AuthResult> {
   if (!mePath) {
@@ -11,8 +11,8 @@ export async function getCurrentUser(): Promise<AuthResult> {
   }
 
   try {
-    const user = await apiRequest<User>(mePath);
-    return { status: 'authenticated', user };
+    const result = await apiRequest<{ user: User }>(mePath);
+    return { status: 'authenticated', user: result.user };
   } catch (error) {
     if (error instanceof ApiError && [401, 419].includes(error.status)) {
       return { status: 'unauthenticated' };
@@ -29,12 +29,14 @@ export async function login(email: string, password: string): Promise<User> {
     throw new ApiConfigurationError('Laravel login endpoint is not configured yet.');
   }
 
-  return apiRequest<User>(loginPath, {
+  const result = await apiRequest<{ token: string; user: User }>(loginPath, {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
+  if (typeof window !== 'undefined') window.localStorage.setItem('maintenance_token', result.token);
+  return result.user;
 }
 
 export async function logout(): Promise<void> {
-  await apiRequest<void>(logoutPath, { method: 'POST' });
+  try { await apiRequest<void>(logoutPath, { method: 'POST' }); } finally { if (typeof window !== 'undefined') window.localStorage.removeItem('maintenance_token'); }
 }

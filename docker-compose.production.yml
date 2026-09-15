@@ -1,0 +1,110 @@
+services:
+  maintenance-backend:
+    build: { context: ./backend }
+    image: maintenance-backend:latest
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: qa-postgres
+      DB_PORT: 5432
+    command: >-
+      sh -c "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views
+      && chown -R www-data:www-data storage bootstrap/cache
+      && php-fpm"
+    networks:
+      - maintenance-network
+      - qa-system-network
+    volumes:
+      - maintenance-backend-storage:/var/www/html/storage
+
+  maintenance-backend-web:
+    build:
+      context: .
+      dockerfile: nginx/backend.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAINTENANCE_BACKEND_PORT:-13011}:80"
+    volumes:
+      - ./nginx/backend.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - maintenance-network
+      - rapidplast-network
+    depends_on:
+      maintenance-backend: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  maintenance-frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_BASE_PATH: /maintenance
+        NEXT_PUBLIC_API_URL: /maintenance/api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:${MAINTENANCE_FRONTEND_PORT:-13010}:3000"
+    networks:
+      - maintenance-network
+      - rapidplast-network
+    depends_on:
+      maintenance-backend-web: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://$$(hostname):3000/maintenance"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  maintenance-queue:
+    image: maintenance-backend:latest
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=120
+    env_file: ./backend/.env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: qa-postgres
+      DB_PORT: 5432
+    networks:
+      - maintenance-network
+      - qa-system-network
+    volumes:
+      - maintenance-backend-storage:/var/www/html/storage
+    depends_on:
+      maintenance-backend: { condition: service_started }
+
+  maintenance-scheduler:
+    image: maintenance-backend:latest
+    restart: unless-stopped
+    command: php artisan schedule:work
+    env_file: ./backend/.env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: qa-postgres
+      DB_PORT: 5432
+    networks:
+      - maintenance-network
+      - qa-system-network
+    volumes:
+      - maintenance-backend-storage:/var/www/html/storage
+    depends_on:
+      maintenance-backend: { condition: service_started }
+
+networks:
+  maintenance-network:
+    name: maintenance-network
+  qa-system-network:
+    external: true
+    name: qa-system-network
+  rapidplast-network:
+    external: true
+    name: rapidplast-network
+
+volumes:
+  maintenance-backend-storage:
+    name: maintenance-backend-storage

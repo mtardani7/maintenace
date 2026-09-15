@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration';
 import './globals.css';
-import './phase8.css';
 
 export const metadata: Metadata = {
-  title: 'Maintenance Operations',
-  description: 'Maintenance operations workspace',
-  applicationName: 'Maintenance Operations',
+  title: 'Maintenance System',
+  description: 'Ruang kerja operasional pemeliharaan',
+  applicationName: 'Maintenance System',
+  icons: { icon: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/qa-logo.png` },
 };
 
 export const viewport: Viewport = {
@@ -14,5 +14,6 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><head><link rel="manifest" href="/manifest.webmanifest" /></head><body><ServiceWorkerRegistration />{children}</body></html>;
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+  return <html lang="id"><head><link rel="manifest" href={`${basePath}/manifest.webmanifest`} /></head><body><ServiceWorkerRegistration />{children}</body></html>;
 }

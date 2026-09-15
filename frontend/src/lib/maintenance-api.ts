@@ -1,17 +1,29 @@
 import { apiRequest, ApiConfigurationError } from './api';
-import type { CreateIncidentInput, CreateTicketInput, Incident, Machine, MachineDetail, MachineFilters, MaintenanceTicket, MachineQADefect } from './maintenance-types';
+import type { CreateIncidentInput, CreateTicketInput, Incident, Machine, MachineDetail, MachineFilters, MachinePage, MaintenanceTicket, MachineQADefect } from './maintenance-types';
 import { getMachineAnalytics } from './operations-api';
+
+export type PlantOption = { id: number; code: string; name: string };
+export type QaDashboard = {
+  date: string;
+  summary: { production_pcs: number; defect_qty: number; defect_rate: number; yield: number };
+  pareto: Array<{ id: number; name: string; quantity: number; cumulative_percentage?: number }>;
+  top_defects: Array<{ id: number; name: string; quantity: number }>;
+  top_machines: Array<{ id: number; name: string; value: number; output_pcs?: number }>;
+  defect_categories: Array<{ id: number; name: string; value: number }>;
+  production_trend: Array<{ date: string; production_pcs: number }>;
+  defect_trend: Array<{ date: string; defect_qty: number }>;
+};
 
 type Collection<T> = T[] | { data: T[]; meta?: { current_page?: number; last_page?: number; total?: number } };
 
 const paths = {
-  machines: process.env.NEXT_PUBLIC_MACHINES_PATH,
+  machines: process.env.NEXT_PUBLIC_MACHINES_PATH ?? '/machines',
   machineDetail: process.env.NEXT_PUBLIC_MACHINE_DETAIL_PATH_TEMPLATE,
   machineIncidents: process.env.NEXT_PUBLIC_MACHINE_INCIDENTS_PATH_TEMPLATE,
   machineTickets: process.env.NEXT_PUBLIC_MACHINE_TICKETS_PATH_TEMPLATE,
     machineQaDefects: process.env.NEXT_PUBLIC_MACHINE_QA_DEFECTS_PATH_TEMPLATE,
-  createIncident: process.env.NEXT_PUBLIC_INCIDENTS_CREATE_PATH,
-  createTicket: process.env.NEXT_PUBLIC_TICKETS_CREATE_PATH,
+  createIncident: process.env.NEXT_PUBLIC_INCIDENTS_CREATE_PATH ?? '/incidents',
+  createTicket: process.env.NEXT_PUBLIC_TICKETS_CREATE_PATH ?? '/tickets',
 };
 
 function requiredPath(value: string | undefined, label: string): string {
@@ -24,6 +36,8 @@ function withQuery(path: string, filters: MachineFilters): string {
   if (filters.search) query.set('search', filters.search);
   if (filters.plant) query.set('plant', filters.plant);
   if (filters.status) query.set('status', filters.status);
+  if (filters.page) query.set('page', String(filters.page));
+  if (filters.per_page) query.set('per_page', String(filters.per_page));
   const suffix = query.toString();
   return suffix ? `${path}${path.includes('?') ? '&' : '?'}${suffix}` : path;
 }
@@ -41,8 +55,41 @@ export function maintenanceApiAvailability() {
 }
 
 export async function getMachines(filters: MachineFilters = {}): Promise<Machine[]> {
-  const response = await apiRequest<Collection<Machine>>(withQuery(requiredPath(paths.machines, 'Machine list'), filters));
-  return collection(response);
+  return (await getMachinePage(filters)).data;
+}
+
+export async function getPlantOptions(): Promise<PlantOption[]> {
+  const response = await apiRequest<{ data: PlantOption[] }>('/plants');
+  return response.data;
+}
+
+export async function getIncidents(): Promise<Incident[]> {
+  const response = await apiRequest<{ data: Incident[] }>('/incidents?per_page=100');
+  return response.data;
+}
+
+export async function getQaDashboard(filters: Record<string, string | number | undefined> = {}): Promise<QaDashboard> {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)); });
+  const suffix = query.toString();
+  return apiRequest<QaDashboard>(`/qa-dashboard${suffix ? `?${suffix}` : ''}`);
+}
+
+export async function getMachinePage(filters: MachineFilters = {}): Promise<MachinePage> {
+  const response = await apiRequest<MachinePage | Collection<Machine>>(withQuery(requiredPath(paths.machines, 'Machine list'), filters));
+  if (Array.isArray(response)) return { data: response, current_page: 1, last_page: 1, per_page: response.length, total: response.length };
+  return response as MachinePage;
+}
+
+export async function requestMachine(input: Record<string, unknown>) {
+  return apiRequest<Machine>(paths.machines ?? '/machines', { method: 'POST', body: JSON.stringify(input) });
+}
+export async function updateMachine(id: Machine['id'], input: Record<string, unknown>) {
+  return apiRequest<Machine>(`/machines/${encodeURIComponent(String(id))}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+export async function deleteMachine(id: Machine['id']) {
+  return apiRequest<void>(`/machines/${encodeURIComponent(String(id))}`, { method: 'DELETE' });
 }
 
 export async function getMachineDetail(id: Machine['id']): Promise<MachineDetail> {
@@ -75,6 +122,7 @@ export async function createIncident(input: CreateIncidentInput) {
   return apiRequest<Incident>(requiredPath(paths.createIncident, 'Incident creation'), {
     method: 'POST',
     body: JSON.stringify({
+      plant_id: input.plantId,
       machine_id: input.machineId,
       problem_type: input.problemType,
       description: input.description,
@@ -88,6 +136,7 @@ export async function createTicket(input: CreateTicketInput) {
   return apiRequest<MaintenanceTicket>(requiredPath(paths.createTicket, 'Ticket creation'), {
     method: 'POST',
     body: JSON.stringify({
+      plant_id: input.plantId,
       machine_id: input.machineId,
       problem_type: input.problemType,
       description: input.description,

@@ -8,6 +8,12 @@ export type Machine = {
   line: string;
   location: string;
   status: MachineStatus;
+  machine_number?: string;
+  is_active?: boolean;
+  plant_id?: number;
+  line_id?: number;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  requested_by?: number | string;
 };
 export type MachineQADefect = {
   id: number | string;
@@ -18,10 +24,13 @@ export type MachineQADefect = {
 
 export type Incident = {
   id: number | string;
+  plantId?: number | string;
+  machineId?: number | string;
   problemType: string;
   description: string;
   actionTaken?: string;
   result?: string;
+  status?: string;
   createdAt: string;
 };
 
@@ -44,9 +53,14 @@ export type MachineFilters = {
   search?: string;
   plant?: string;
   status?: MachineStatus | '';
+  page?: number;
+  per_page?: number;
 };
 
+export type MachinePage = { data: Machine[]; current_page: number; last_page: number; per_page: number; total: number };
+
 export type CreateIncidentInput = {
+  plantId: number | string;
   machineId: Machine['id'];
   problemType: string;
   description: string;
@@ -55,6 +69,7 @@ export type CreateIncidentInput = {
 };
 
 export type CreateTicketInput = {
+  plantId: number | string;
   machineId: Machine['id'];
   problemType: string;
   description: string;

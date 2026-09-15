@@ -4,7 +4,7 @@ import { SectionHeading } from '@/components/ui';
 
 export default function NotificationsPage() {
 	return <>
-		<SectionHeading eyebrow="Attention center" title="Notifications" />
+		<SectionHeading eyebrow="Pusat perhatian" title="Notifikasi" description="Tinjau pembaruan dan peringatan pemeliharaan terbaru." />
 		<PushSettings />
 		<NotificationCenter />
 	</>;

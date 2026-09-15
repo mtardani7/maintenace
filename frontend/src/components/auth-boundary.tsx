@@ -18,7 +18,7 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
         setUser(result.user);
         setStatus('ready');
       } else if (result.status === 'unauthenticated') {
-        router.replace('/login');
+        router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
       } else {
         setMessage(result.message);
         setStatus('error');
@@ -27,7 +27,7 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
   }, [router]);
 
   if (status === 'loading') return <LoadingState />;
-  if (status === 'error') return <ErrorState title="Authentication is not connected" description={message} />;
-  if (!user) return <LoadingState label="Redirecting to sign in" />;
+  if (status === 'error') return <ErrorState title="Autentikasi belum terhubung" description={message} />;
+  if (!user) return <LoadingState label="Mengalihkan ke halaman masuk" />;
   return <>{children}</>;
 }

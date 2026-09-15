@@ -13,7 +13,7 @@ export function PushSettings() {
 
   useEffect(() => {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) { setState('unsupported'); return; }
-    navigator.serviceWorker.ready.then((ready) => { setRegistration(ready); setState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'default'); }).catch(() => { setState('error'); setMessage('The notification service worker could not be started.'); });
+    navigator.serviceWorker.ready.then((ready) => { setRegistration(ready); setState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'default'); }).catch(() => { setState('error'); setMessage('Service worker notifikasi tidak dapat dijalankan.'); });
   }, []);
 
   async function enable() {
@@ -22,14 +22,14 @@ export function PushSettings() {
     try {
       const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
       if (permission === 'denied') { setState('denied'); return; }
-      if (permission !== 'granted') { setState('error'); setMessage('Notification permission was not granted.'); return; }
+      if (permission !== 'granted') { setState('error'); setMessage('Izin notifikasi tidak diberikan.'); return; }
       await subscribePush(registration);
       setState('enabled');
     } catch (reason) { setState('error'); setMessage(notificationApiMessage(reason)); }
   }
 
-  if (state === 'checking') return <div className="push-card"><span className="push-card__label">Browser notifications</span><span className="push-card__muted">Checking support...</span></div>;
-  if (state === 'unsupported') return <div className="push-card"><span className="push-card__label">Browser notifications</span><span className="push-card__muted">This browser does not support notifications.</span></div>;
-  if (state === 'denied') return <div className="push-card"><span className="push-card__label">Browser notifications</span><span className="push-card__muted">Notifications are blocked. Allow them in your browser settings.</span></div>;
-  return <div className="push-card"><div><span className="push-card__label">Browser notifications</span><span className="push-card__muted">Get updates for assigned, overdue, and resolved tickets.</span></div>{state === 'enabled' ? <strong className="push-enabled">Enabled</strong> : <button className="secondary-action" onClick={enable}>{state === 'granted' ? 'Enable Notifications' : 'Enable Notifications'}</button>}{state === 'error' && <ErrorState title="Notifications unavailable" description={message} />}</div>;
+  if (state === 'checking') return <div className="push-card"><span className="push-card__label">Notifikasi browser</span><span className="push-card__muted">Memeriksa dukungan...</span></div>;
+  if (state === 'unsupported') return <div className="push-card"><span className="push-card__label">Notifikasi browser</span><span className="push-card__muted">Browser ini tidak mendukung notifikasi.</span></div>;
+  if (state === 'denied') return <div className="push-card"><span className="push-card__label">Notifikasi browser</span><span className="push-card__muted">Notifikasi diblokir. Izinkan melalui pengaturan browser.</span></div>;
+  return <div className="push-card"><div><span className="push-card__label">Notifikasi browser</span><span className="push-card__muted">Dapatkan pembaruan tiket yang ditugaskan, terlambat, dan selesai.</span></div>{state === 'enabled' ? <strong className="push-enabled">Aktif</strong> : <button className="secondary-action" onClick={enable}>Aktifkan notifikasi</button>}{state === 'error' && <ErrorState title="Notifikasi tidak tersedia" description={message} />}</div>;
 }

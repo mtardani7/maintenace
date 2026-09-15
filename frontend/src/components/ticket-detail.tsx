@@ -9,13 +9,13 @@ import type { Role } from '@/lib/types';
 import { EmptyState, ErrorState, LoadingState } from './ui';
 
 function label(value: string) { return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-const actionForStatus: Partial<Record<string, { action: TicketAction; label: string }>> = { OPEN: { action: 'accept', label: 'Accept Ticket' }, ASSIGNED: { action: 'start', label: 'Start Work' } };
+const actionForStatus: Partial<Record<string, { action: TicketAction; label: string }>> = { OPEN: { action: 'accept', label: 'Terima tiket' }, ASSIGNED: { action: 'start', label: 'Mulai pekerjaan' } };
 
 export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const [ticket, setTicket] = useState<Ticket | null>(null); const [role, setRole] = useState<Role>('operator'); const [error, setError] = useState(''); const [actionError, setActionError] = useState(''); const [busy, setBusy] = useState(false); const [notes, setNotes] = useState<TicketActionInput>({}); const [showResolve, setShowResolve] = useState(false); const [technicianId, setTechnicianId] = useState(''); const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
   useEffect(() => { getTicket(ticketId).then(setTicket).catch((reason) => setError(apiMessage(reason))); getCurrentUser().then((result) => { if (result.status === 'authenticated' && result.user.role) setRole(result.user.role); }); }, [ticketId]);
-  if (error) return <ErrorState title="Ticket unavailable" description={error} />;
-  if (!ticket) return <LoadingState label="Loading ticket" />;
+  if (error) return <ErrorState title="Tiket tidak tersedia" description={error} />;
+  if (!ticket) return <LoadingState label="Memuat tiket" />;
   const isTechnician = role === 'technician'; const isSupervisor = supervisorRoles.includes(role); const statusAction = actionForStatus[ticket.status];
   async function action(actionType: TicketAction, input: TicketActionInput = {}) { setActionError(''); setBusy(true); try { setTicket(await performTicketAction(ticket!.id, actionType, input)); setShowResolve(false); } catch (reason) { setActionError(apiMessage(reason)); } finally { setBusy(false); } }
   function resolve() { if (!notes.diagnosis?.trim() || !notes.actionTaken?.trim() || !notes.repairNotes?.trim() || !notes.completionTime) { setActionError('Diagnosis, action taken, repair notes, and completion time are required before resolving.'); return; } action('resolve', notes); }

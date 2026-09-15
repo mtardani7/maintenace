@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'qa_system' => [
+        'url' => env('QA_SYSTEM_API_URL', 'http://qa-backend-web/api/v1'),
+        'token' => env('QA_SYSTEM_API_TOKEN'),
+        'email' => env('QA_SYSTEM_SERVICE_EMAIL'),
+        'password' => env('QA_SYSTEM_SERVICE_PASSWORD'),
+        'device_name' => env('QA_SYSTEM_DEVICE_NAME', 'maintenance-dashboard'),
+        'token_ttl' => (int) env('QA_SYSTEM_TOKEN_TTL', 3300),
+    ],
+
 ];

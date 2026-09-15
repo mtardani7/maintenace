@@ -1,11 +1,11 @@
 import type { Role } from './types';
 
 export const roles: { id: Role; label: string; scope: string }[] = [
-  { id: 'operator', label: 'Operator', scope: 'Monitor plant status and report incidents' },
-  { id: 'technician', label: 'Technician', scope: 'Execute assigned maintenance work' },
-  { id: 'supervisor', label: 'Supervisor', scope: 'Coordinate teams and priorities' },
-  { id: 'qa', label: 'QA', scope: 'Review quality and completion evidence' },
-  { id: 'admin', label: 'Admin', scope: 'Manage users and system configuration' },
+  { id: 'operator', label: 'Operator', scope: 'Pantau status pabrik dan laporkan insiden' },
+  { id: 'technician', label: 'Teknisi', scope: 'Laksanakan pekerjaan pemeliharaan yang ditugaskan' },
+  { id: 'supervisor', label: 'Supervisor', scope: 'Koordinasikan tim dan prioritas' },
+  { id: 'qa', label: 'QA', scope: 'Tinjau mutu dan bukti penyelesaian' },
+  { id: 'admin', label: 'Admin', scope: 'Kelola pengguna dan konfigurasi sistem' },
 ];
 
 export const routeAccess: Record<string, Role[]> = {

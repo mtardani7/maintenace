@@ -1,21 +1,8 @@
 import type { ApiErrorPayload } from './types';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
-const csrfCookiePath = process.env.NEXT_PUBLIC_CSRF_COOKIE_PATH ?? '/api/csrf-cookie';
-
-function readCookie(name: string) {
-  if (typeof document === 'undefined') return '';
-  const entry = document.cookie.split('; ').find((item) => item.startsWith(`${name}=`));
-  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : '';
-}
-
-async function ensureCsrfToken() {
-  if (typeof document === 'undefined') return '';
-  const existing = readCookie('XSRF-TOKEN');
-  if (existing) return existing;
-  const response = await fetch(`${apiBaseUrl}${csrfCookiePath}`, { credentials: 'include', headers: { Accept: 'application/json' } });
-  if (!response.ok) throw new ApiError('The CSRF token could not be initialized.', response.status);
-  return readCookie('XSRF-TOKEN');
+function accessToken() {
+  return typeof window === 'undefined' ? '' : window.localStorage.getItem('maintenance_token') ?? '';
 }
 
 export class ApiError extends Error {
@@ -43,15 +30,13 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   }
 
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
-  const method = (init?.method ?? 'GET').toUpperCase();
-  const isMutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
-  const csrfToken = isMutating && path !== csrfCookiePath ? await ensureCsrfToken() : '';
+  const token = accessToken();
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
-    credentials: 'include',
+    credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
-      ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
@@ -77,8 +62,8 @@ export async function apiDownload(path: string, init?: RequestInit): Promise<Blo
   }
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
-    credentials: 'include',
-    headers: { Accept: 'text/csv, application/octet-stream', ...init?.headers },
+    credentials: 'same-origin',
+    headers: { Accept: 'text/csv, application/octet-stream', ...(accessToken() ? { Authorization: `Bearer ${accessToken()}` } : {}), ...init?.headers },
   });
   if (!response.ok) throw new ApiError('The API download could not be completed.', response.status);
   return response.blob();
