@@ -273,6 +273,48 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 480px) { .qa-detail-hero { display: block; }.qa-severity { display: inline-block; margin-top: 15px; }.source-card { align-items: flex-start; flex-direction: column; } }
 
 .form-card-heading { margin-bottom: 18px; }
+
+/* Ticket workspace refinements */
+.ticket-browser { min-width: 0; }
+.ticket-filters { gap: 12px; padding: 16px; border-color: #e2e8f0; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgb(15 23 42 / .04); }
+.ticket-filters label { color: #64748b; letter-spacing: .04em; }
+.ticket-filters input, .ticket-filters select { height: 40px; margin-top: 8px; border-color: #e2e8f0; border-radius: 9px; padding: 0 12px; color: #0f172a; font-size: 12px; }
+.ticket-filters input:focus, .ticket-filters select:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / .1); }
+.ticket-table { overflow-x: auto; border-color: #e2e8f0; border-radius: 14px; box-shadow: 0 8px 24px rgb(15 23 42 / .04); }
+.ticket-table__head, .ticket-row { min-width: 1060px; grid-template-columns: 1.3fr 1.35fr .8fr .95fr 1fr 1fr; gap: 16px; padding: 16px 18px; }
+.ticket-table__head { background: #f8fafc; color: #64748b; }
+.ticket-row { min-height: 82px; border-bottom-color: #f1f5f9; color: #334155; }
+.ticket-row:hover { background: #fff7f7; }
+.ticket-row__identity strong { color: #991b1b; font-family: var(--font-mono); font-size: 12px; letter-spacing: .02em; }
+.ticket-row strong { color: #0f172a; font-size: 12px; }
+.ticket-row small { color: #64748b; line-height: 1.35; }
+.ticket-row__description { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-status { border-radius: 999px; padding: 6px 9px; font-size: 10px; letter-spacing: .03em; }
+.ticket-status--open { background: #eff6ff; color: #1d4ed8; }
+.ticket-status--in_progress { background: #fff7ed; color: #c2410c; }
+.ticket-status--resolved, .ticket-status--verified, .ticket-status--closed { background: #ecfdf5; color: #047857; }
+.ticket-status--critical { background: #fef2f2; color: #b91c1c; }
+.sla-overdue strong { color: #b91c1c; }
+.pagination { border-color: #e2e8f0; padding: 14px 18px; }
+.pagination button { border-color: #e2e8f0; border-radius: 8px; background: #fff; color: #334155; }
+.ticket-detail-layout { max-width: 1280px; }
+.ticket-detail-hero { position: relative; overflow: hidden; border-color: #fecaca; background: linear-gradient(135deg, #fff 0%, #fff7f7 100%); }
+.ticket-detail-hero::after { position: absolute; right: -50px; bottom: -80px; width: 190px; height: 190px; border-radius: 50%; background: #fee2e2; content: ''; opacity: .55; }
+.ticket-detail-hero > div, .ticket-detail-hero > .ticket-status { position: relative; z-index: 1; }
+.ticket-detail-hero .eyebrow { color: #b91c1c; font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.ticket-detail-hero h1 { font-size: clamp(25px, 3vw, 36px); }
+.ticket-detail-hero .ticket-status { margin-top: 2px; }
+.ticket-info-card { border-radius: 14px; }
+.ticket-info-card > h2 { font-size: 17px; }
+.ticket-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ticket-facts > div { min-width: 0; }
+.ticket-facts dd { overflow-wrap: anywhere; }
+.ticket-description { margin-top: 22px; border-top: 1px solid #f1f5f9; padding-top: 18px; }
+.ticket-description p { margin: 8px 0 0; color: #334155; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+.ticket-actions { position: sticky; top: 78px; }
+.action-card { border-radius: 14px; }
+@media (max-width: 800px) { .ticket-actions { position: static; }.ticket-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .ticket-filters { padding: 13px; }.ticket-table { border-radius: 11px; }.ticket-detail-hero { padding: 19px; }.ticket-facts { grid-template-columns: 1fr; }.ticket-row__description { max-width: 180px; } }
 .form-card-heading h2 { margin: 5px 0 7px; font-size: 20px; }
 .form-card-heading p:last-child { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .form-grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }

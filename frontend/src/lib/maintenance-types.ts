@@ -36,6 +36,7 @@ export type Incident = {
 
 export type MaintenanceTicket = {
   id: number | string;
+  number?: string;
   problemType: string;
   description: string;
   status?: string;

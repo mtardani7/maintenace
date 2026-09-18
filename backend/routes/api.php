@@ -21,6 +21,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
 	Route::put('/machines/{machine}', [QaMachineController::class, 'update']);
 	Route::patch('/machines/{machine}', [QaMachineController::class, 'update']);
 	Route::delete('/machines/{machine}', [QaMachineController::class, 'destroy']);
+	Route::post('/tickets/{ticket}/actions', [MaintenanceTicketController::class, 'action']);
+	Route::post('/tickets/{ticket}/actions/{action}', [MaintenanceTicketController::class, 'action']);
 	Route::apiResource('incidents', IncidentController::class);
 	Route::apiResource('tickets', MaintenanceTicketController::class);
 });

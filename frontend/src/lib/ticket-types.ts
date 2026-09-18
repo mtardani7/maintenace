@@ -1,7 +1,8 @@
-import type { Role } from './types';
+import type { Role } from "./types";
 
-export type TicketStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'RESOLVED' | 'VERIFIED' | 'CLOSED';
-export type TicketPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type TicketStatus =
+  "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "VERIFIED" | "CLOSED";
+export type TicketPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 export type Ticket = {
   id: number | string;
@@ -13,12 +14,21 @@ export type Ticket = {
   description: string;
   priority: TicketPriority;
   status: TicketStatus;
-    sourceType?: 'OPERATOR' | 'QA' | 'MANUAL';
-    sourceId?: string;
+  durationHours?: number;
+  solution?: string;
+  reason?: string;
+  sourceType?: "OPERATOR" | "QA" | "MANUAL";
+  sourceId?: string;
   reporter?: { id: number | string; name: string };
   technician?: { id: number | string; name: string };
   createdAt: string;
-  sla?: { status: 'ON_TRACK' | 'DUE_SOON' | 'OVERDUE'; dueAt?: string; targetAt?: string; remaining?: string; overdueDuration?: string };
+  sla?: {
+    status: "ON_TRACK" | "DUE_SOON" | "OVERDUE";
+    dueAt?: string;
+    targetAt?: string;
+    remaining?: string;
+    overdueDuration?: string;
+  };
   attachments?: { id: number | string; name: string; url?: string }[];
   timeline?: TimelineEvent[];
 };
@@ -36,11 +46,11 @@ export type TimelineEvent = {
 
 export type TicketFilters = {
   search?: string;
-  status?: TicketStatus | '';
-  priority?: TicketPriority | '';
+  status?: TicketStatus | "";
+  priority?: TicketPriority | "";
   plant?: string;
   technician?: string;
-  sort?: 'newest' | 'oldest';
+  sort?: "newest" | "oldest";
   page?: number;
 };
 
@@ -51,9 +61,25 @@ export type TicketPage = {
   total: number;
 };
 
-export type TicketAction = 'accept' | 'start' | 'diagnosis' | 'action' | 'spare-part' | 'photo' | 'resolve' | 'assign' | 'priority' | 'review' | 'verify' | 'reopen';
+export type TicketAction =
+  | "accept"
+  | "start"
+  | "diagnosis"
+  | "action"
+  | "spare-part"
+  | "photo"
+  | "resolve"
+  | "close"
+  | "assign"
+  | "priority"
+  | "review"
+  | "verify"
+  | "reopen";
 
 export type TicketActionInput = {
+  durationHours?: number;
+  solution?: string;
+  reason?: string;
   diagnosis?: string;
   actionTaken?: string;
   spareParts?: string;
@@ -64,7 +90,19 @@ export type TicketActionInput = {
   priority?: TicketPriority;
 };
 
-export const ticketStatuses: TicketStatus[] = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'VERIFIED', 'CLOSED'];
-export const ticketPriorities: TicketPriority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-export const technicianRoles: Role[] = ['technician'];
-export const supervisorRoles: Role[] = ['supervisor', 'admin'];
+export const ticketStatuses: TicketStatus[] = [
+  "OPEN",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "VERIFIED",
+  "CLOSED",
+];
+export const ticketPriorities: TicketPriority[] = [
+  "CRITICAL",
+  "HIGH",
+  "MEDIUM",
+  "LOW",
+];
+export const technicianRoles: Role[] = ["technician"];
+export const supervisorRoles: Role[] = ["supervisor", "admin"];
