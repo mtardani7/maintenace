@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronLeft, ChevronRight, ClipboardList, LayoutDashboard, Menu, Settings, Ticket, Wrench, X } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, ClipboardList, Factory, LayoutDashboard, Menu, Settings, Ticket, Wrench, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useEffect } from 'react';
@@ -11,9 +11,12 @@ import type { Role, User } from '@/lib/types';
 const groups = [
   { label: 'Operasional', links: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/machines', label: 'Mesin', icon: Wrench },
     { href: '/incidents', label: 'Insiden', icon: ClipboardList },
     { href: '/tickets', label: 'Tiket', icon: Ticket },
+  ] },
+  { label: 'Master Data', links: [
+    { href: '/machines', label: 'Mesin', icon: Wrench },
+    { href: '/plants', label: 'Plant', icon: Factory, roles: ['admin'] as Role[] },
   ] },
   { label: 'Pemantauan', links: [
     { href: '/notifications', label: 'Notifikasi', icon: Bell },
@@ -33,14 +36,14 @@ export function Navigation() {
 
   return (
     <>
-      <button className="mobile-menu-button" onClick={() => setMobileOpen(true)} aria-label="Buka navigasi"><Menu aria-hidden="true" /></button>
+      <button className="mobile-menu-button" type="button" onClick={() => setMobileOpen(true)} aria-label="Buka navigasi" aria-expanded={mobileOpen} aria-controls="main-navigation"><Menu aria-hidden="true" /></button>
       {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Tutup navigasi" />}
-      <aside className={`sidebar ${mobileOpen ? 'sidebar--open' : ''} ${collapsed ? 'sidebar--collapsed' : ''}`}>
+      <aside id="main-navigation" className={`sidebar ${mobileOpen ? 'sidebar--open' : ''} ${collapsed ? 'sidebar--collapsed' : ''}`}>
         <div className="brand-lockup">
           <img src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/qa-logo.png`} alt="Sistem QA" className="brand-mark size-9 object-contain" />
           <div className="brand-copy"><strong>Maintenance System</strong></div>
           <button className="sidebar-toggle" type="button" onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? 'Tampilkan bilah sisi' : 'Sembunyikan bilah sisi'}>{collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}</button>
-          <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Tutup navigasi"><X aria-hidden="true" /></button>
+          <button className="mobile-close" type="button" onClick={() => setMobileOpen(false)} aria-label="Tutup navigasi"><X aria-hidden="true" /></button>
         </div>
         <nav aria-label="Navigasi utama">
           {groups.map((group) => <div className="nav-group" key={group.label}><div className={`nav-label ${collapsed ? 'nav-label--collapsed' : ''}`}>{collapsed ? '•' : group.label}</div>{group.links.filter((link) => !link.roles || link.roles.includes(role)).map((link) => {

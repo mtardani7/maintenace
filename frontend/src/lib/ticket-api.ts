@@ -144,15 +144,11 @@ export function performTicketAction(
   action: TicketAction,
   input: TicketActionInput = {},
 ) {
-  const { durationHours, ...rest } = input;
+  const { durationHours, solution } = input;
   const body = {
     action,
-    ...Object.fromEntries(
-      Object.entries(rest).filter(
-        ([, value]) => value !== undefined && value !== "",
-      ),
-    ),
     ...(durationHours ? { duration_hours: durationHours } : {}),
+    ...(solution?.trim() ? { solution: solution.trim() } : {}),
   };
   return apiRequest<Partial<Ticket> & Record<string, unknown>>(
     replacePath(paths.action, id, "Ticket actions", action),

@@ -15,6 +15,12 @@ return [
 
     'default' => env('QUEUE_CONNECTION', 'database'),
 
+    'monthly_maintenance_report' => [
+        'connection' => env('MAINTENANCE_REPORT_QUEUE_CONNECTION'),
+        'queue' => env('MAINTENANCE_REPORT_QUEUE', 'default'),
+        'production_hours_per_machine_per_day' => env('MAINTENANCE_PRODUCTION_HOURS_PER_MACHINE_PER_DAY'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Queue Connections

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MaintenanceTicket;
-use Illuminate\Support\Facades\DB;
+use App\Services\MaintenanceTicketCreator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,6 +12,7 @@ class MaintenanceTicketController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tickets = MaintenanceTicket::query()
+            ->with(['machine', 'reporter'])
             ->when($request->filled('plant_id'), fn ($query) => $query->where('plant_id', $request->integer('plant_id')))
             ->when($request->filled('machine_id'), fn ($query) => $query->where('machine_id', $request->integer('machine_id')))
             ->latest()
@@ -20,7 +21,7 @@ class MaintenanceTicketController extends Controller
         return response()->json($tickets);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, MaintenanceTicketCreator $creator): JsonResponse
     {
         $data = $request->validate([
             'plant_id' => ['required', 'integer'],
@@ -31,82 +32,64 @@ class MaintenanceTicketController extends Controller
         ]);
         $data['reported_by'] = $request->user()->id;
 
-        $ticket = DB::transaction(function () use ($data): MaintenanceTicket {
-            $machine = \App\Models\Machine::query()->lockForUpdate()->findOrFail($data['machine_id']);
-            $plant = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $machine->plant));
-            $machineCode = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $machine->code));
-            $date = now()->format('dmy');
-            $prefix = sprintf('%s-%s-%s-', $plant, $date, $machineCode);
-            $lastSequence = MaintenanceTicket::query()
-                ->where('ticket_number', 'like', $prefix . '%')
-                ->pluck('ticket_number')
-                ->map(fn (string $number): int => (int) str($number)->afterLast('-'))
-                ->max() ?? 0;
+        $ticket = $creator->create($data);
 
-            $data['ticket_number'] = sprintf('%s%03d', $prefix, $lastSequence + 1);
-
-            return MaintenanceTicket::create($data);
-        });
-
-        return response()->json($ticket->load('machine'), 201);
+        return response()->json($ticket, 201);
     }
 
     public function show(MaintenanceTicket $ticket): JsonResponse
     {
-        return response()->json($ticket);
+        return response()->json($ticket->load(['machine', 'reporter']));
     }
 
     public function action(Request $request, MaintenanceTicket $ticket, ?string $action = null): JsonResponse
     {
         $data = $request->validate([
-            'action' => ['sometimes', 'in:accept,start,diagnosis,action,spare-part,photo,resolve,close,assign,priority,review,verify,reopen'],
-            'duration_hours' => ['sometimes', 'numeric', 'min:0.25', 'max:1000'],
-            'solution' => ['sometimes', 'string', 'max:5000'],
-            'reason' => ['sometimes', 'string', 'max:5000'],
+            'action' => ['sometimes', 'in:close'],
+            'duration_hours' => ['required', 'numeric', 'min:0.25', 'max:1000'],
+            'solution' => ['required', 'string', 'min:1', 'max:5000'],
         ]);
         $action = $action ?? $data['action'] ?? null;
 
-        if ($action === 'close' && blank($data['solution'] ?? null)) {
-            return response()->json(['message' => 'Solution is required when closing a ticket.'], 422);
-        }
-
-        if ($action === 'reopen' && blank($data['reason'] ?? null)) {
-            return response()->json(['message' => 'Reason is required when opening a ticket.'], 422);
-        }
-
-        if (! in_array($action, ['accept', 'start', 'diagnosis', 'action', 'spare-part', 'photo', 'resolve', 'close', 'assign', 'priority', 'review', 'verify', 'reopen'], true)) {
+        if ($action !== 'close') {
             return response()->json(['message' => 'The ticket action is invalid.'], 422);
         }
 
-        $status = match ($action) {
-            'accept' => 'ASSIGNED',
-            'start' => 'IN_PROGRESS',
-            'resolve' => 'RESOLVED',
-            'close' => 'CLOSED',
-            'verify' => 'VERIFIED',
-            'reopen' => 'OPEN',
-            default => $ticket->status,
-        };
+        if ($ticket->status !== 'OPEN') {
+            return response()->json(['message' => 'Only open tickets can be closed.'], 422);
+        }
 
-        $ticket->update(array_merge(['status' => $status], array_intersect_key($data, array_flip(['duration_hours', 'solution', 'reason']))));
+        $ticket->update([
+            'status' => 'CLOSED',
+            'duration_hours' => $data['duration_hours'],
+            'solution' => trim($data['solution']),
+            'closed_at' => now(),
+        ]);
 
-        return response()->json($ticket->fresh());
+        return response()->json($ticket->fresh(['machine', 'reporter']));
     }
 
     public function update(Request $request, MaintenanceTicket $ticket): JsonResponse
     {
+        if ($ticket->status === 'CLOSED') {
+            return response()->json(['message' => 'Closed tickets are historical records and cannot be edited.'], 422);
+        }
+
         $data = $request->validate([
-            'status' => ['sometimes', 'in:OPEN,ASSIGNED,IN_PROGRESS,RESOLVED,CLOSED'],
             'priority' => ['sometimes', 'in:LOW,MEDIUM,HIGH,CRITICAL'],
             'description' => ['sometimes', 'string', 'min:10'],
         ]);
         $ticket->update($data);
 
-        return response()->json($ticket->fresh());
+        return response()->json($ticket->fresh(['machine', 'reporter']));
     }
 
     public function destroy(MaintenanceTicket $ticket): JsonResponse
     {
+        if ($ticket->status === 'CLOSED') {
+            return response()->json(['message' => 'Closed tickets are historical records and cannot be deleted.'], 422);
+        }
+
         $ticket->delete();
         return response()->json(null, 204);
     }

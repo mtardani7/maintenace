@@ -115,4 +115,15 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'monthly_maintenance_report' => [
+        'recipients' => [
+            'SH Prod' => env('MAINTENANCE_REPORT_SH_PROD_EMAIL'),
+            'PM' => env('MAINTENANCE_REPORT_PM_EMAIL'),
+            'Planner' => env('MAINTENANCE_REPORT_PLANNER_EMAIL'),
+            'DH Eng Mtn' => env('MAINTENANCE_REPORT_DH_ENG_MTN_EMAIL'),
+            'SH QA' => env('MAINTENANCE_REPORT_SH_QA_EMAIL'),
+            'DH QA' => env('MAINTENANCE_REPORT_DH_QA_EMAIL'),
+        ],
+    ],
+
 ];

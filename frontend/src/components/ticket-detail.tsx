@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getCurrentUser } from "@/lib/auth";
 import { apiMessage, getTicket, performTicketAction } from "@/lib/ticket-api";
 import {
-  supervisorRoles,
-  ticketPriorities,
   type Ticket,
-  type TicketAction,
   type TicketActionInput,
-  type TicketPriority,
 } from "@/lib/ticket-types";
-import type { Role } from "@/lib/types";
 import { EmptyState, ErrorState, LoadingState } from "./ui";
 
 function label(value: string) {
@@ -23,52 +17,35 @@ function label(value: string) {
 }
 export function TicketDetailView({ ticketId }: { ticketId: string }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [role, setRole] = useState<Role>("operator");
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [technicianId, setTechnicianId] = useState("");
-  const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
-  const [ticketState, setTicketState] = useState<"open" | "close">("open");
   const [durationHours, setDurationHours] = useState("");
   const [solution, setSolution] = useState("");
-  const [reason, setReason] = useState("");
   useEffect(() => {
     getTicket(ticketId)
       .then(setTicket)
       .catch((reason) => setError(apiMessage(reason)));
-    getCurrentUser().then((result) => {
-      if (result.status === "authenticated" && result.user.role)
-        setRole(result.user.role);
-    });
   }, [ticketId]);
   if (error)
     return <ErrorState title="Tiket tidak tersedia" description={error} />;
   if (!ticket) return <LoadingState label="Memuat tiket" />;
-  const isTechnician = role === "technician";
-  const isSupervisor = supervisorRoles.includes(role);
-  function saveTicketState() {
-    if (ticketState === "open" && !reason.trim()) {
-      setActionError("Reason is required when opening a ticket.");
-      return;
-    }
-    if (ticketState === "close" && !durationHours) {
+  function closeTicket() {
+    if (!durationHours || Number(durationHours) <= 0) {
       setActionError("Duration is required when closing a ticket.");
       return;
     }
-    if (ticketState === "close" && !solution.trim()) {
+    if (!solution.trim()) {
       setActionError("Solution is required when closing a ticket.");
       return;
     }
-    action(
-      ticketState === "open" ? "reopen" : "close",
-      ticketState === "open"
-        ? { reason: reason.trim() }
-        : { durationHours: Number(durationHours), solution: solution.trim() },
-    );
+    action("close", {
+      durationHours: Number(durationHours),
+      solution: solution.trim(),
+    });
   }
   async function action(
-    actionType: TicketAction,
+    actionType: "close",
     input: TicketActionInput = {},
   ) {
     setActionError("");
@@ -203,142 +180,52 @@ export function TicketDetailView({ ticketId }: { ticketId: string }) {
           Back to tickets
         </Link>
         <section className="action-card">
-          <p className="eyebrow">Technician actions</p>
-          {isTechnician && (
+          <p className="eyebrow">Maintenance workflow</p>
+          {ticket.status === "OPEN" ? (
             <>
+              <p className="action-note">Lengkapi durasi pekerjaan dan solusi untuk menutup tiket.</p>
               <label className="form-field">
-                Status
-                <select
-                  value={ticketState}
-                  onChange={(event) =>
-                    setTicketState(event.target.value as "open" | "close")
-                  }
-                >
-                  <option value="open">Open</option>
-                  <option value="close">Close</option>
-                </select>
-              </label>
-              {ticketState === "open" && (
-                <label className="form-field">
-                  Reason
-                  <textarea
-                    rows={3}
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    placeholder="Why is this ticket being opened?"
-                  />
-                </label>
-              )}
-              {ticketState === "close" && (
-                <>
-                  <label className="form-field">
-                    Duration (hours)
-                    <input
-                      type="number"
-                      min="0.25"
-                      step="0.25"
-                      value={durationHours}
-                      onChange={(event) => setDurationHours(event.target.value)}
-                      placeholder="How many hours"
-                    />
-                  </label>
-                  <label className="form-field">
-                    Solution
-                    <textarea
-                      rows={3}
-                      value={solution}
-                      onChange={(event) => setSolution(event.target.value)}
-                      placeholder="What was the solution?"
-                    />
-                  </label>
-                </>
-              )}
-              <button
-                className="primary-button"
-                disabled={
-                  busy ||
-                  (ticketState === "open"
-                    ? !reason.trim()
-                    : !durationHours || !solution.trim())
-                }
-                onClick={saveTicketState}
-              >
-                {busy
-                  ? "Updating..."
-                  : `Set ${ticketState === "open" ? "Open" : "Close"}`}
-              </button>
-            </>
-          )}
-          {isSupervisor && (
-            <>
-              <label className="form-field">
-                Technician ID
+                Duration (hours)
                 <input
-                  value={technicianId}
-                  onChange={(event) => setTechnicianId(event.target.value)}
-                  placeholder="Laravel technician ID"
+                  type="number"
+                  min="0.25"
+                  step="0.25"
+                  value={durationHours}
+                  onChange={(event) => setDurationHours(event.target.value)}
+                  placeholder="Contoh: 2.5"
+                />
+              </label>
+              <label className="form-field">
+                Solution
+                <textarea
+                  rows={4}
+                  value={solution}
+                  onChange={(event) => setSolution(event.target.value)}
+                  placeholder="Jelaskan solusi atau tindakan perbaikan"
                 />
               </label>
               <button
-                className="secondary-action"
-                disabled={!technicianId || busy}
-                onClick={() => action("assign", { technicianId })}
+                className="primary-button"
+                disabled={busy || !durationHours || !solution.trim()}
+                onClick={closeTicket}
               >
-                Assign / Reassign Technician
+                {busy ? "Saving..." : "Close Ticket"}
               </button>
-              <label className="form-field">
-                Priority
-                <select
-                  value={priority}
-                  onChange={(event) =>
-                    setPriority(event.target.value as TicketPriority)
-                  }
-                >
-                  {ticketPriorities.map((item) => (
-                    <option key={item} value={item}>
-                      {label(item)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                className="secondary-action"
-                disabled={busy}
-                onClick={() => action("priority", { priority })}
-              >
-                Change Priority
-              </button>
-              {ticket.status === "RESOLVED" && (
-                <>
-                  <button
-                    className="secondary-action"
-                    onClick={() => action("review")}
-                  >
-                    Review Resolution
-                  </button>
-                  <button
-                    className="primary-button"
-                    onClick={() => action("verify")}
-                  >
-                    Verify Resolution
-                  </button>
-                </>
-              )}
-              {ticket.status === "VERIFIED" && (
-                <button
-                  className="secondary-action"
-                  onClick={() => action("reopen")}
-                >
-                  Reopen Ticket
-                </button>
-              )}
             </>
-          )}
-          {!isTechnician && !isSupervisor && (
-            <p className="action-note">
-              Actions are available to technicians and supervisors according to
-              Laravel authorization.
-            </p>
+          ) : (
+            <>
+              <p className="action-note">Tiket sudah ditutup dan tersimpan sebagai riwayat maintenance.</p>
+              <dl className="ticket-facts">
+                <div>
+                  <dt>Duration</dt>
+                  <dd>{ticket.durationHours ?? "--"} hours</dd>
+                </div>
+                <div>
+                  <dt>Solution</dt>
+                  <dd>{ticket.solution ?? "--"}</dd>
+                </div>
+              </dl>
+            </>
           )}
           {actionError && (
             <ErrorState title="Action failed" description={actionError} />

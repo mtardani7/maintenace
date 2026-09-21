@@ -1,7 +1,5 @@
-import type { Role } from "./types";
-
 export type TicketStatus =
-  "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "VERIFIED" | "CLOSED";
+  "OPEN" | "CLOSED";
 export type TicketPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 export type Ticket = {
@@ -62,47 +60,17 @@ export type TicketPage = {
 };
 
 export type TicketAction =
-  | "accept"
-  | "start"
-  | "diagnosis"
-  | "action"
-  | "spare-part"
-  | "photo"
-  | "resolve"
-  | "close"
-  | "assign"
-  | "priority"
-  | "review"
-  | "verify"
-  | "reopen";
+  "close";
 
 export type TicketActionInput = {
   durationHours?: number;
   solution?: string;
-  reason?: string;
-  diagnosis?: string;
-  actionTaken?: string;
-  spareParts?: string;
-  repairNotes?: string;
-  completionTime?: string;
-  photo?: File;
-  technicianId?: number | string;
-  priority?: TicketPriority;
 };
 
-export const ticketStatuses: TicketStatus[] = [
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "RESOLVED",
-  "VERIFIED",
-  "CLOSED",
-];
+export const ticketStatuses: TicketStatus[] = ["OPEN", "CLOSED"];
 export const ticketPriorities: TicketPriority[] = [
   "CRITICAL",
   "HIGH",
   "MEDIUM",
   "LOW",
 ];
-export const technicianRoles: Role[] = ["technician"];
-export const supervisorRoles: Role[] = ["supervisor", "admin"];

@@ -6,17 +6,14 @@ use App\Models\Machine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Models\Incident;
+use App\Models\MaintenanceTicket;
 
 class MachineController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Machine::query()->latest();
-        $user = $request->user();
-
-        if (! in_array($user?->role, ['admin', 'qa'], true)) {
-            $query->where('approval_status', 'approved');
-        }
+        $query = Machine::query()->with('plant')->latest();
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
@@ -26,38 +23,69 @@ class MachineController extends Controller
             });
         }
 
-        if ($request->filled('plant')) $query->where('plant', $request->string('plant'));
-        if ($request->filled('status')) $query->where('status', $request->string('status'));
+        if ($request->filled('plant')) $query->where('plant_id', $request->integer('plant'));
+        if ($request->filled('plant_id')) $query->where('plant_id', $request->integer('plant_id'));
+        if ($request->filled('status')) $query->where('is_active', $request->string('status')->toString() === 'running');
+        if ($request->has('is_active')) $query->where('is_active', filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN));
 
-        return response()->json($query->get());
+        $machines = $query->paginate(min($request->integer('per_page', 20), 100));
+        $machines->getCollection()->transform(fn (Machine $machine): array => $this->resource($machine));
+        return response()->json($machines);
     }
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:100', 'unique:machines,code'],
+            'plant_id' => ['required', 'integer', Rule::exists('plants', 'id')->where(fn ($query) => $query->where('is_active', true))],
+            'code' => ['required', 'string', 'max:100', Rule::unique('machines')->where(fn ($query) => $query->where('plant_id', $request->integer('plant_id')))],
             'name' => ['required', 'string', 'max:255'],
-            'plant' => ['required', 'string', 'max:255'],
-            'line' => ['required', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'],
+            'section' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $machine = Machine::create([...$validated, 'requested_by' => $request->user()->id]);
+        $machine = Machine::create([...$validated, 'created_by' => $request->user()->id, 'updated_by' => $request->user()->id]);
 
-        return response()->json($machine->load('requester'), 201);
+        return response()->json($this->resource($machine), 201);
     }
 
-    public function review(Request $request, Machine $machine): JsonResponse
+    public function update(Request $request, Machine $machine): JsonResponse
     {
-        abort_unless(in_array($request->user()?->role, ['admin', 'qa'], true), 403);
-
-        $validated = $request->validate(['decision' => ['required', Rule::in(['approved', 'rejected'])]]);
-        $machine->update([
-            'approval_status' => $validated['decision'],
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
+        $validated = $request->validate([
+            'plant_id' => ['sometimes', 'integer', Rule::exists('plants', 'id')->where(fn ($query) => $query->where('is_active', true))],
+            'code' => ['sometimes', 'string', 'max:100', Rule::unique('machines')->where(fn ($query) => $query->where('plant_id', $request->integer('plant_id', $machine->plant_id)))->ignore($machine->id)],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'section' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
+        $validated['updated_by'] = $request->user()->id;
+        $machine->update($validated);
 
-        return response()->json($machine->fresh()->load('requester', 'reviewer'));
+        return response()->json($this->resource($machine->fresh()));
+    }
+
+    public function destroy(Request $request, Machine $machine): JsonResponse
+    {
+        $hasHistory = Incident::where('machine_id', $machine->id)->exists()
+            || MaintenanceTicket::where('machine_id', $machine->id)->exists();
+        $machine->update(['is_active' => false, 'updated_by' => $request->user()->id]);
+
+        return response()->json(['message' => $hasHistory ? 'Machine deactivated to preserve history.' : 'Machine deactivated.']);
+    }
+
+    private function resource(Machine $machine): array
+    {
+        return [
+            'id' => $machine->id,
+            'plant_id' => $machine->plant_id,
+            'plant' => $machine->plant ? ['id' => $machine->plant->id, 'code' => $machine->plant->code, 'name' => $machine->plant->name] : null,
+            'code' => $machine->code,
+            'name' => $machine->name,
+            'section' => $machine->section,
+            'is_active' => $machine->is_active,
+            'created_by' => $machine->created_by,
+            'updated_by' => $machine->updated_by,
+            'created_at' => $machine->created_at,
+            'updated_at' => $machine->updated_at,
+        ];
     }
 }

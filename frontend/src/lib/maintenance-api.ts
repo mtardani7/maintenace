@@ -1,5 +1,5 @@
 import { apiRequest, ApiConfigurationError } from './api';
-import type { CreateIncidentInput, CreateTicketInput, Incident, Machine, MachineDetail, MachineFilters, MachinePage, MaintenanceTicket, MachineQADefect } from './maintenance-types';
+import type { CreateIncidentInput, CreateTicketInput, Incident, Machine, MachineDetail, MachineFilters, MachinePage, MaintenanceTicket, MachineQADefect, Plant } from './maintenance-types';
 import { getMachineAnalytics } from './operations-api';
 
 export type PlantOption = { id: number; code: string; name: string };
@@ -59,8 +59,27 @@ export async function getMachines(filters: MachineFilters = {}): Promise<Machine
 }
 
 export async function getPlantOptions(): Promise<PlantOption[]> {
-  const response = await apiRequest<{ data: PlantOption[] }>('/plants');
+  const response = await apiRequest<{ data: PlantOption[] }>('/plants?is_active=true&per_page=100');
   return response.data;
+}
+
+export async function getPlants(filters: { search?: string; is_active?: string; page?: number; per_page?: number } = {}) {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)); });
+  const response = await apiRequest<{ data: Plant[]; current_page: number; last_page: number; total: number }>(`/plants${query.toString() ? `?${query}` : ''}`);
+  return response;
+}
+
+export async function createPlant(input: Pick<Plant, 'code' | 'name' | 'description' | 'is_active'>) {
+  return apiRequest<Plant>('/plants', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function updatePlant(id: Plant['id'], input: Partial<Pick<Plant, 'code' | 'name' | 'description' | 'is_active'>>) {
+  return apiRequest<Plant>(`/plants/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+export async function deactivatePlant(id: Plant['id']) {
+  return apiRequest<{ message: string }>(`/plants/${id}`, { method: 'DELETE' });
 }
 
 export async function getIncidents(): Promise<Incident[]> {
@@ -128,6 +147,7 @@ export async function createIncident(input: CreateIncidentInput) {
       description: input.description,
       action_taken: input.actionTaken,
       result: input.result,
+      status: input.status,
     }),
   });
 }

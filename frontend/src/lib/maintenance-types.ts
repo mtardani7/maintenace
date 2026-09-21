@@ -1,19 +1,31 @@
 export type MachineStatus = 'running' | 'stopped' | 'maintenance' | 'offline' | 'unknown';
 
+export type Plant = {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type Machine = {
   id: number | string;
   code: string;
   name: string;
-  plant: string;
-  line: string;
-  location: string;
-  status: MachineStatus;
-  machine_number?: string;
-  is_active?: boolean;
-  plant_id?: number;
+  plant_id: number | string;
+  section?: string;
+  is_active: boolean;
+  status?: MachineStatus;
   line_id?: number;
-  approval_status?: 'pending' | 'approved' | 'rejected';
-  requested_by?: number | string;
+  created_by?: number | string;
+  updated_by?: number | string;
+  created_at?: string;
+  updated_at?: string;
+  plant?: string;
+  line?: string;
+  location?: string;
 };
 export type MachineQADefect = {
   id: number | string;
@@ -30,7 +42,7 @@ export type Incident = {
   description: string;
   actionTaken?: string;
   result?: string;
-  status?: string;
+  status?: 'OPEN' | 'RESOLVED';
   createdAt: string;
 };
 
@@ -53,7 +65,7 @@ export type MachineDetail = Machine & {
 export type MachineFilters = {
   search?: string;
   plant?: string;
-  status?: MachineStatus | '';
+  status?: string;
   page?: number;
   per_page?: number;
 };
@@ -65,8 +77,9 @@ export type CreateIncidentInput = {
   machineId: Machine['id'];
   problemType: string;
   description: string;
-  actionTaken: string;
-  result: string;
+  actionTaken?: string;
+  result?: string;
+  status: 'OPEN' | 'RESOLVED';
 };
 
 export type CreateTicketInput = {

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Incident;
 use App\Http\Resources\IncidentResource;
+use App\Services\MaintenanceTicketCreator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class IncidentController extends Controller
 {
@@ -20,20 +22,37 @@ class IncidentController extends Controller
         return IncidentResource::collection($incidents);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, MaintenanceTicketCreator $ticketCreator): JsonResponse
     {
         $data = $request->validate([
             'plant_id' => ['required', 'integer'],
             'machine_id' => ['required', 'integer'],
             'problem_type' => ['required', 'string', 'max:100'],
             'description' => ['required', 'string', 'min:10'],
-            'action_taken' => ['required', 'string', 'min:5'],
-            'result' => ['required', 'string', 'min:5'],
+            'action_taken' => ['nullable', 'required_if:status,RESOLVED', 'string', 'min:5'],
+            'result' => ['nullable', 'required_if:status,RESOLVED', 'string', 'min:5'],
+            'status' => ['required', 'in:OPEN,RESOLVED'],
         ]);
         $data['reported_by'] = $request->user()->id;
-        $data['status'] = 'RESOLVED';
 
-        return response()->json(new IncidentResource(Incident::create($data)), 201);
+        $incident = DB::transaction(function () use ($data, $ticketCreator): Incident {
+            $incident = Incident::create($data);
+
+            if ($incident->status === 'OPEN') {
+                $ticketCreator->create([
+                    'plant_id' => $incident->plant_id,
+                    'machine_id' => $incident->machine_id,
+                    'problem_type' => $incident->problem_type,
+                    'description' => $incident->description,
+                    'source' => 'OPERATOR',
+                    'reported_by' => $incident->reported_by,
+                ]);
+            }
+
+            return $incident;
+        });
+
+        return response()->json(new IncidentResource($incident), 201);
     }
 
     public function show(Incident $incident): IncidentResource
@@ -50,7 +69,7 @@ class IncidentController extends Controller
             'description' => ['sometimes', 'string', 'min:10'],
             'action_taken' => ['sometimes', 'string', 'min:5'],
             'result' => ['sometimes', 'string', 'min:5'],
-            'status' => ['sometimes', 'in:RESOLVED,CANCELLED'],
+            'status' => ['sometimes', 'in:OPEN,RESOLVED'],
         ]);
         $incident->update($data);
 

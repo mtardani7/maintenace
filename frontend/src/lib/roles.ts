@@ -17,5 +17,6 @@ export const routeAccess: Record<string, Role[]> = {
   '/qa': ['qa', 'admin'],
   '/supervisor': ['supervisor', 'admin'],
   '/reports': ['supervisor', 'qa', 'admin'],
+  '/plants': ['admin'],
   '/settings': ['admin'],
 };

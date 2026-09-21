@@ -15,7 +15,10 @@ class MaintenanceTicket extends Model
         'reason',
     ];
 
-    protected $casts = ['duration_hours' => 'float'];
+    protected $casts = [
+        'duration_hours' => 'float',
+        'closed_at' => 'datetime',
+    ];
 
     public function getRouteKeyName(): string
     {

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MachineController;
+use App\Http\Controllers\PlantController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\MaintenanceTicketController;
 use App\Http\Controllers\QaMachineController;
@@ -14,13 +15,13 @@ Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logo
 
 Route::middleware('auth:sanctum')->post('/admin/users', [AdminUserController::class, 'store']);
 Route::middleware('auth:sanctum')->group(function (): void {
-	Route::get('/machines', [QaMachineController::class, 'index']);
-	Route::get('/plants', [QaMachineController::class, 'plants']);
+	Route::get('/machines', [MachineController::class, 'index']);
+	Route::apiResource('plants', PlantController::class)->except(['show']);
 	Route::get('/qa-dashboard', [QaMachineController::class, 'dashboard']);
-	Route::post('/machines', [QaMachineController::class, 'store']);
-	Route::put('/machines/{machine}', [QaMachineController::class, 'update']);
-	Route::patch('/machines/{machine}', [QaMachineController::class, 'update']);
-	Route::delete('/machines/{machine}', [QaMachineController::class, 'destroy']);
+	Route::post('/machines', [MachineController::class, 'store']);
+	Route::put('/machines/{machine}', [MachineController::class, 'update']);
+	Route::patch('/machines/{machine}', [MachineController::class, 'update']);
+	Route::delete('/machines/{machine}', [MachineController::class, 'destroy']);
 	Route::post('/tickets/{ticket}/actions', [MaintenanceTicketController::class, 'action']);
 	Route::post('/tickets/{ticket}/actions/{action}', [MaintenanceTicketController::class, 'action']);
 	Route::apiResource('incidents', IncidentController::class);

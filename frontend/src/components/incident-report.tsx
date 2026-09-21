@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createIncident, createTicket, getIncidents, getMachines, getPlantOptions, type PlantOption } from '@/lib/maintenance-api';
+import { createIncident, getIncidents, getMachines, getPlantOptions, type PlantOption } from '@/lib/maintenance-api';
 import type { Incident, Machine } from '@/lib/maintenance-types';
 import { EmptyState, ErrorState, LoadingState } from './ui';
 
@@ -100,12 +100,13 @@ export function IncidentReport() {
     setSubmitting(true);
     try {
       if (resolution === 'resolved') {
-        await createIncident({ plantId, machineId, problemType, description: description.trim(), actionTaken: actionTaken.trim(), result: result.trim() });
+        await createIncident({ plantId, machineId, problemType, description: description.trim(), actionTaken: actionTaken.trim(), result: result.trim(), status: 'RESOLVED' });
         setSuccess('Catatan insiden berhasil dibuat. Tidak ada tiket pemeliharaan yang dibuka.');
         await refreshHistory();
       } else {
-        await createTicket({ plantId, machineId, problemType, description: description.trim(), source: 'OPERATOR' });
+        await createIncident({ plantId, machineId, problemType, description: description.trim(), status: 'OPEN' });
         setSuccess('Tiket pemeliharaan berhasil dibuat dan diteruskan ke tim.');
+        await refreshHistory();
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Laporan tidak dapat disimpan. Periksa koneksi API lalu coba lagi.');
@@ -160,7 +161,7 @@ export function IncidentReport() {
         {visibleIncidents.map((incident) => (
           <article className="incident-history-item" key={incident.id} role="button" tabIndex={0} onClick={() => setSelectedIncident(incident)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedIncident(incident); }}>
             <div><strong>{problemTypes.find((type) => type.value === incident.problemType)?.label ?? incident.problemType}</strong><p>{incident.description}</p><small>{incident.createdAt ? new Date(incident.createdAt).toLocaleString('id-ID') : 'Waktu tidak tersedia'}</small></div>
-            <div className="incident-history-meta"><span>{plants.find((plant) => String(plant.id) === String(incident.plantId))?.name ?? `Plant #${incident.plantId ?? '-'}`}</span><span>{machineDirectory.find((machine) => String(machine.id) === String(incident.machineId))?.name ?? `Mesin #${incident.machineId ?? '-'}`}</span><b>{incident.status === 'RESOLVED' ? 'Selesai' : incident.status ?? 'Tidak diketahui'}</b></div>
+            <div className="incident-history-meta"><span>{plants.find((plant) => String(plant.id) === String(incident.plantId))?.name ?? `Plant #${incident.plantId ?? '-'}`}</span><span>{machineDirectory.find((machine) => String(machine.id) === String(incident.machineId))?.name ?? `Mesin #${incident.machineId ?? '-'}`}</span><b>{incident.status === 'RESOLVED' ? 'Selesai' : incident.status === 'OPEN' ? 'Diteruskan ke maintenance' : incident.status ?? 'Tidak diketahui'}</b></div>
           </article>
         ))}
       </div>
