@@ -23,6 +23,8 @@ class MaintenanceTicketCreator
                 ->max() ?? 0;
 
             $data['ticket_number'] = sprintf('%s%03d', $prefix, $lastSequence + 1);
+            $data['status'] = 'OPEN';
+            $data['priority'] ??= 'MEDIUM';
 
             return MaintenanceTicket::create($data)->load(['machine', 'reporter']);
         });

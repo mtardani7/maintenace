@@ -39,7 +39,7 @@ export type Incident = {
   plantId?: number | string;
   machineId?: number | string;
   problemType: string;
-  description: string;
+  description?: string;
   actionTaken?: string;
   result?: string;
   status?: 'OPEN' | 'RESOLVED';
@@ -50,7 +50,7 @@ export type MaintenanceTicket = {
   id: number | string;
   number?: string;
   problemType: string;
-  description: string;
+  description?: string;
   status?: string;
   createdAt: string;
 };

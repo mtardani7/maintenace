@@ -15,6 +15,16 @@ export type Ticket = {
   durationHours?: number;
   solution?: string;
   reason?: string;
+  actionTaken?: string;
+  executor?: { id: number | string; name: string; role?: string };
+  rootCauseAnalysis?: string;
+  correctiveActionPlan?: string;
+  targetAt?: string;
+  actionBy?: { id: number | string; name: string; role?: string };
+  closedAt?: string;
+  closedBy?: { id: number | string; name: string; role?: string };
+  verificationChecklist?: VerificationChecklist;
+  spareParts: SparePart[];
   sourceType?: "OPERATOR" | "QA" | "MANUAL";
   sourceId?: string;
   reporter?: { id: number | string; name: string };
@@ -63,8 +73,32 @@ export type TicketAction =
   "close";
 
 export type TicketActionInput = {
+  reason: string;
+  actionTaken: string;
+  executorId: number | string;
   durationHours?: number;
   solution?: string;
+};
+
+export type MaintenanceUser = { id: number | string; name: string; role: string };
+
+export type BreakdownAnalysisInput = {
+  rootCauseAnalysis?: string;
+  correctiveActionPlan?: string;
+  targetAt?: string;
+  actionById?: number | string;
+};
+
+export type VerificationValue = "OK" | "NOK" | "N/A";
+export type VerificationKey = "machine_cleanliness" | "water" | "grease" | "gram" | "machine_function" | "machine_safety" | "tool";
+export type VerificationChecklist = Partial<Record<VerificationKey, VerificationValue>>;
+
+export type SparePart = {
+  id: number | string;
+  name: string;
+  materialCode: string;
+  quantity: number;
+  remark?: string;
 };
 
 export const ticketStatuses: TicketStatus[] = ["OPEN", "CLOSED"];

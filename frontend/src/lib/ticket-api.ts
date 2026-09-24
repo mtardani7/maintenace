@@ -1,5 +1,9 @@
 import { apiRequest, ApiConfigurationError, ApiError } from "./api";
 import type {
+  MaintenanceUser,
+  BreakdownAnalysisInput,
+  VerificationChecklist,
+  SparePart,
   Ticket,
   TicketAction,
   TicketActionInput,
@@ -75,9 +79,14 @@ function normalizeTicket(
     "-") as number | string;
   const machine = ticket.machine as
     { id?: number | string; code?: string; name?: string } | undefined;
+  const ticketNumber = ticket.ticket_number ?? ticket.number;
+  const normalizedNumber = typeof ticketNumber === "string" || typeof ticketNumber === "number"
+    ? String(ticketNumber)
+    : `TKT-${String(ticket.id ?? "-")}`;
+
   return {
     id: ticket.id ?? "-",
-    number: String(ticket.number ?? ticket.ticket_number ?? `TKT-${ticket.id ?? "-"}`),
+    number: normalizedNumber,
     machine: {
       id: machine?.id ?? machineId,
       code: machine?.code ?? `Mesin #${machineId}`,
@@ -97,7 +106,24 @@ function normalizeTicket(
       ticket.durationHours ?? (ticket.duration_hours as number | undefined),
     solution: ticket.solution as string | undefined,
     reason: ticket.reason as string | undefined,
+    actionTaken: (ticket.actionTaken ?? ticket.action_taken) as string | undefined,
+    executor: ticket.executor as Ticket["executor"],
+    rootCauseAnalysis: (ticket.rootCauseAnalysis ?? ticket.root_cause_analysis) as string | undefined,
+    correctiveActionPlan: (ticket.correctiveActionPlan ?? ticket.corrective_action_plan) as string | undefined,
+    targetAt: (ticket.targetAt ?? ticket.target_at) as string | undefined,
+    actionBy: ticket.actionBy ?? ticket.action_by as Ticket["actionBy"],
+    closedAt: (ticket.closedAt ?? ticket.closed_at) as string | undefined,
+    closedBy: ticket.closedBy ?? ticket.closed_by as Ticket["closedBy"],
+    verificationChecklist: (ticket.verificationChecklist ?? ticket.verification_checklist) as VerificationChecklist | undefined,
+    spareParts: ((ticket.spareParts ?? ticket.spare_parts) as Array<Record<string, unknown>> | undefined ?? []).map((part) => ({
+      id: (part.id as number | string | undefined) ?? "-",
+      name: String(part.name ?? ""),
+      materialCode: String(part.materialCode ?? part.material_code ?? ""),
+      quantity: Number(part.quantity ?? 0),
+      remark: part.remark as string | undefined,
+    })),
     sourceType: (ticket.sourceType ?? ticket.source) as Ticket["sourceType"],
+    reporter: ticket.reporter as Ticket["reporter"],
     createdAt: String(ticket.createdAt ?? ticket.created_at ?? ""),
   };
 }
@@ -142,11 +168,14 @@ export function getTicketStats() {
 export function performTicketAction(
   id: Ticket["id"],
   action: TicketAction,
-  input: TicketActionInput = {},
+  input: Partial<TicketActionInput> = {},
 ) {
   const { durationHours, solution } = input;
   const body = {
     action,
+    reason: input.reason,
+    action_taken: input.actionTaken,
+    executor_id: input.executorId,
     ...(durationHours ? { duration_hours: durationHours } : {}),
     ...(solution?.trim() ? { solution: solution.trim() } : {}),
   };
@@ -154,6 +183,51 @@ export function performTicketAction(
     replacePath(paths.action, id, "Ticket actions", action),
     { method: "POST", body: JSON.stringify(body) },
   ).then((ticket) => normalizeTicket(ticket));
+}
+
+export function getMaintenanceUsers() {
+  return apiRequest<MaintenanceUser[]>('/maintenance-users');
+}
+
+export function updateBreakdownAnalysis(ticketId: Ticket["id"], input: BreakdownAnalysisInput) {
+  return apiRequest<Partial<Ticket> & Record<string, unknown>>(`/tickets/${encodeURIComponent(String(ticketId))}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      root_cause_analysis: input.rootCauseAnalysis,
+      corrective_action_plan: input.correctiveActionPlan,
+      target_at: input.targetAt || null,
+      action_by_id: input.actionById || null,
+    }),
+  }).then((ticket) => normalizeTicket(ticket));
+}
+
+export function updateVerificationChecklist(ticketId: Ticket["id"], checklist: VerificationChecklist) {
+  return apiRequest<Partial<Ticket> & Record<string, unknown>>(`/tickets/${encodeURIComponent(String(ticketId))}`, {
+    method: "PUT",
+    body: JSON.stringify({ verification_checklist: checklist }),
+  }).then((ticket) => normalizeTicket(ticket));
+}
+
+export function addSparePart(ticketId: Ticket["id"], input: Omit<SparePart, "id">) {
+  return apiRequest<Record<string, unknown>>(`/tickets/${encodeURIComponent(String(ticketId))}/spare-parts`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      material_code: input.materialCode,
+      quantity: input.quantity,
+      remark: input.remark,
+    }),
+  }).then((part) => ({
+    id: (part.id as number | string | undefined) ?? "-",
+    name: String(part.name ?? ""),
+    materialCode: String(part.materialCode ?? part.material_code ?? ""),
+    quantity: Number(part.quantity ?? 0),
+    remark: part.remark as string | undefined,
+  }));
+}
+
+export function removeSparePart(ticketId: Ticket["id"], sparePartId: SparePart["id"]) {
+  return apiRequest<void>(`/tickets/${encodeURIComponent(String(ticketId))}/spare-parts/${encodeURIComponent(String(sparePartId))}`, { method: "DELETE" });
 }
 
 export function apiMessage(error: unknown) {

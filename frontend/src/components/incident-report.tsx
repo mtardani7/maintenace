@@ -82,7 +82,7 @@ export function IncidentReport() {
     if (!plantId) return 'Pilih plant terlebih dahulu.';
     if (!machineId) return 'Pilih mesin terlebih dahulu.';
     if (!problemType) return 'Pilih jenis masalah.';
-    if (description.trim().length < 10) return 'Jelaskan masalah minimal 10 karakter.';
+    if (problemType === 'Other' && description.trim().length < 10) return 'Untuk jenis masalah Lainnya, jelaskan masalah minimal 10 karakter.';
     if (!resolution) return 'Pilih apakah masalah dapat diselesaikan operator.';
     if (resolution === 'resolved' && actionTaken.trim().length < 5) return 'Jelaskan tindakan operator minimal 5 karakter.';
     if (resolution === 'resolved' && result.trim().length < 5) return 'Jelaskan hasil tindakan minimal 5 karakter.';
@@ -138,7 +138,7 @@ export function IncidentReport() {
       <section className="form-card">
         <div className="form-card-heading"><p className="eyebrow">Detail masalah</p><h2>Jelaskan insiden</h2></div>
         <div className="form-field"><span>Jenis masalah</span><div className="choice-grid">{problemTypes.map((type) => <button type="button" className={`choice-button ${problemType === type.value ? 'choice-button--selected' : ''}`} key={type.value} onClick={() => setProblemType(type.value)} disabled={submitting}>{type.label}</button>)}</div></div>
-        <label className="form-field">Deskripsi masalah<textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => setTouched(true)} rows={4} placeholder="Apa yang terjadi? Sertakan detail yang membantu." disabled={submitting} /></label>
+        <label className="form-field">Deskripsi masalah{problemType === 'Other' && ' (wajib untuk Lainnya)'}<textarea value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => setTouched(true)} rows={4} placeholder="Apa yang terjadi? Sertakan detail yang membantu." disabled={submitting} /></label>
       </section>
       <section className="form-card">
         <div className="question-heading"><p className="eyebrow">Tindakan awal</p><h2>Apakah operator dapat menangani masalah ini?</h2></div>

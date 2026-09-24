@@ -8,6 +8,7 @@ use App\Services\MaintenanceTicketCreator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class IncidentController extends Controller
 {
@@ -28,7 +29,12 @@ class IncidentController extends Controller
             'plant_id' => ['required', 'integer'],
             'machine_id' => ['required', 'integer'],
             'problem_type' => ['required', 'string', 'max:100'],
-            'description' => ['required', 'string', 'min:10'],
+            'description' => [
+                'nullable',
+                'string',
+                Rule::requiredIf(fn (): bool => in_array(strtolower($request->string('problem_type')->toString()), ['other', 'lainnya'], true)),
+                'min:10',
+            ],
             'action_taken' => ['nullable', 'required_if:status,RESOLVED', 'string', 'min:5'],
             'result' => ['nullable', 'required_if:status,RESOLVED', 'string', 'min:5'],
             'status' => ['required', 'in:OPEN,RESOLVED'],
@@ -43,7 +49,7 @@ class IncidentController extends Controller
                     'plant_id' => $incident->plant_id,
                     'machine_id' => $incident->machine_id,
                     'problem_type' => $incident->problem_type,
-                    'description' => $incident->description,
+                    'description' => $incident->description ?: $incident->problem_type,
                     'source' => 'OPERATOR',
                     'reported_by' => $incident->reported_by,
                 ]);

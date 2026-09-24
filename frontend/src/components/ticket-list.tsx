@@ -2,11 +2,63 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { getTickets, apiMessage } from '@/lib/ticket-api';
+import { apiMessage, getTickets } from '@/lib/ticket-api';
 import { ticketPriorities, ticketStatuses, type Ticket, type TicketFilters, type TicketPriority, type TicketStatus } from '@/lib/ticket-types';
 import { EmptyState, ErrorState, LoadingState } from './ui';
 
-function label(value: string) { return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-export function TicketList() { const [tickets, setTickets] = useState<Ticket[]>([]); const [filters, setFilters] = useState<TicketFilters>({ sort: 'newest', page: 1 }); const [pageInfo, setPageInfo] = useState({ current: 1, last: 1, total: 0 }); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); useEffect(() => { let active = true; setLoading(true); getTickets(filters).then((page) => { if (active) { setTickets(page.data); setPageInfo({ current: page.currentPage, last: page.lastPage, total: page.total }); setError(''); } }).catch((reason) => { if (active) setError(apiMessage(reason)); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [filters]); const plants = useMemo(() => Array.from(new Set(tickets.map((ticket) => ticket.plant))).sort(), [tickets]); function update(key: keyof TicketFilters, value: string) { setFilters((current) => ({ ...current, [key]: value, page: 1 })); }
-  return <div className="ticket-browser"><div className="ticket-filters"><label className="filter-search">Cari tiket<input value={filters.search ?? ''} onChange={(event) => update('search', event.target.value)} placeholder="Nomor, mesin, masalah" /></label><label>Status<select value={filters.status ?? ''} onChange={(event) => update('status', event.target.value as TicketStatus | '')}><option value="">Semua status</option>{ticketStatuses.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select></label><label>Prioritas<select value={filters.priority ?? ''} onChange={(event) => update('priority', event.target.value as TicketPriority | '')}><option value="">Semua prioritas</option>{ticketPriorities.map((priority) => <option key={priority} value={priority}>{label(priority)}</option>)}</select></label><label>Plant<select value={filters.plant ?? ''} onChange={(event) => update('plant', event.target.value)}><option value="">Semua plant</option>{plants.map((plant) => <option key={plant} value={plant}>{plant}</option>)}</select></label><label>Teknisi<input value={filters.technician ?? ''} onChange={(event) => update('technician', event.target.value)} placeholder="Nama atau ID" /></label><label>Urutan<select value={filters.sort ?? 'newest'} onChange={(event) => update('sort', event.target.value)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option></select></label></div>{loading ? <LoadingState label="Memuat tiket" /> : error ? <ErrorState title="Daftar tiket tidak tersedia" description={error} /> : tickets.length === 0 ? <EmptyState title="Tiket tidak ditemukan" description="Tidak ada tiket yang sesuai filter saat ini." /> : <><div className="ticket-table" role="table"><div className="ticket-table__head" role="row"><span>Tiket / mesin</span><span>Masalah</span><span>Prioritas</span><span>Status</span><span>Teknisi</span><span>SLA</span></div>{tickets.map((ticket) => <Link href={`/tickets/${ticket.number}`} className={`ticket-row ${ticket.sla?.status === 'OVERDUE' ? 'ticket-row--overdue' : ''}`} key={ticket.id}><span className="ticket-row__identity"><strong>{ticket.number}</strong><small>{ticket.machine.code} / {ticket.machine.name}</small><small>{ticket.plant} · {ticket.createdAt}</small></span><span><strong>{ticket.problemType}</strong><small className="ticket-row__description">{ticket.description}</small></span><span><b className={`priority-dot priority-dot--${ticket.priority.toLowerCase()}`} />{label(ticket.priority)}</span><span><b className={`ticket-status ticket-status--${ticket.status.toLowerCase()}`}>{label(ticket.status)}</b></span><span>{ticket.technician?.name ?? 'Belum ditugaskan'}</span><span className={ticket.sla?.status === 'OVERDUE' ? 'sla-overdue' : ''}><strong>{label(ticket.sla?.status ?? 'unknown')}</strong><small>Target: {ticket.sla?.targetAt ?? ticket.sla?.dueAt ?? '--'}</small><small>{ticket.sla?.status === 'OVERDUE' ? `Terlambat: ${ticket.sla.overdueDuration ?? '--'}` : `Sisa: ${ticket.sla?.remaining ?? '--'}`}</small></span></Link>)}</div><div className="pagination"><span>{pageInfo.total} tiket</span><button disabled={pageInfo.current <= 1} onClick={() => setFilters((current) => ({ ...current, page: pageInfo.current - 1 }))}>Sebelumnya</button><strong>Halaman {pageInfo.current} dari {pageInfo.last}</strong><button disabled={pageInfo.current >= pageInfo.last} onClick={() => setFilters((current) => ({ ...current, page: pageInfo.current + 1 }))}>Berikutnya</button></div></>}</div>;
+function label(value: string) {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function TicketList() {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [filters, setFilters] = useState<TicketFilters>({ sort: 'newest', page: 1 });
+  const [pageInfo, setPageInfo] = useState({ current: 1, last: 1, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getTickets(filters).then((page) => {
+      if (!active) return;
+      setTickets(page.data);
+      setPageInfo({ current: page.currentPage, last: page.lastPage, total: page.total });
+      setError('');
+    }).catch((reason) => {
+      if (active) setError(apiMessage(reason));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [filters]);
+
+  const plants = useMemo(() => Array.from(new Set(tickets.map((ticket) => ticket.plant))).sort(), [tickets]);
+  function update(key: keyof TicketFilters, value: string) {
+    setFilters((current) => ({ ...current, [key]: value, page: 1 }));
+  }
+
+  return <div className="ticket-browser">
+    <div className="ticket-filters">
+      <label className="filter-search">Cari tiket<input value={filters.search ?? ''} onChange={(event) => update('search', event.target.value)} placeholder="Nomor, mesin, masalah" /></label>
+      <label>Status<select value={filters.status ?? ''} onChange={(event) => update('status', event.target.value as TicketStatus | '')}><option value="">Semua status</option>{ticketStatuses.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select></label>
+      <label>Prioritas<select value={filters.priority ?? ''} onChange={(event) => update('priority', event.target.value as TicketPriority | '')}><option value="">Semua prioritas</option>{ticketPriorities.map((priority) => <option key={priority} value={priority}>{label(priority)}</option>)}</select></label>
+      <label>Plant<select value={filters.plant ?? ''} onChange={(event) => update('plant', event.target.value)}><option value="">Semua plant</option>{plants.map((plant) => <option key={plant} value={plant}>{plant}</option>)}</select></label>
+      <label>Urutan<select value={filters.sort ?? 'newest'} onChange={(event) => update('sort', event.target.value)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option></select></label>
+    </div>
+    {loading ? <LoadingState label="Memuat tiket" /> : error ? <ErrorState title="Daftar tiket tidak tersedia" description={error} /> : tickets.length === 0 ? <EmptyState title="Tiket tidak ditemukan" description="Tidak ada tiket yang sesuai filter saat ini." /> : <>
+      <div className="ticket-table" role="table">
+        <div className="ticket-table__head" role="row"><span>Ticket Number</span><span>Plant / Machine</span><span>Problem</span><span>Priority</span><span>Reporter</span><span>Status</span></div>
+        {tickets.map((ticket) => <Link href={`/tickets/${encodeURIComponent(String(ticket.id))}`} className="ticket-row" key={ticket.id} role="row">
+          <span className="ticket-row__identity"><strong>{ticket.number}</strong><small>{ticket.createdAt}</small></span>
+          <span><strong>{ticket.plant}</strong><small>{ticket.machine.code} / {ticket.machine.name}</small></span>
+          <span className="ticket-row__description" title={ticket.description}>{ticket.problemType}<small>{ticket.description}</small></span>
+          <span><strong>{label(ticket.priority)}</strong></span>
+          <span>{ticket.reporter?.name ?? 'Provided by Laravel'}</span>
+          <span><b className={`ticket-status ticket-status--${ticket.status.toLowerCase()}`}>{label(ticket.status)}</b></span>
+        </Link>)}
+      </div>
+      <div className="pagination"><button className="secondary-action" disabled={pageInfo.current <= 1} onClick={() => setFilters((current) => ({ ...current, page: pageInfo.current - 1 }))}>Sebelumnya</button><strong>{pageInfo.total} tiket</strong><button className="secondary-action" disabled={pageInfo.current >= pageInfo.last} onClick={() => setFilters((current) => ({ ...current, page: pageInfo.current + 1 }))}>Berikutnya</button></div>
+    </>}
+  </div>;
 }
