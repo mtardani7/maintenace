@@ -9,8 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class MaintenanceTicketSparePartController extends Controller
 {
+    private function ensureMaintenance(Request $request): void
+    {
+        abort_unless($request->user()?->role === 'technician', 403, 'Only Maintenance users can modify ticket spare parts.');
+    }
+
     public function store(Request $request, MaintenanceTicket $ticket): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'material_code' => ['required', 'string', 'max:100'],
@@ -28,8 +35,10 @@ class MaintenanceTicketSparePartController extends Controller
         return response()->json($sparePart, 201);
     }
 
-    public function destroy(MaintenanceTicket $ticket, int $sparePart): JsonResponse
+    public function destroy(Request $request, MaintenanceTicket $ticket, int $sparePart): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         DB::transaction(function () use ($ticket, $sparePart): void {
             $lockedTicket = MaintenanceTicket::query()->lockForUpdate()->findOrFail($ticket->getKey());
             abort_if($lockedTicket->status !== 'OPEN', 422, 'Spare parts can only be changed while the ticket is open.');

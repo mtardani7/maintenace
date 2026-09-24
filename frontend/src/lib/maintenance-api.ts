@@ -138,7 +138,7 @@ export async function getMachineTickets(id: Machine['id']): Promise<MaintenanceT
 }
 
 export async function createIncident(input: CreateIncidentInput) {
-  return apiRequest<Incident>(requiredPath(paths.createIncident, 'Incident creation'), {
+  const response = await apiRequest<Incident & { ticket_number?: string }>(requiredPath(paths.createIncident, 'Incident creation'), {
     method: 'POST',
     body: JSON.stringify({
       plant_id: input.plantId,
@@ -150,6 +150,7 @@ export async function createIncident(input: CreateIncidentInput) {
       status: input.status,
     }),
   });
+  return { ...response, ticketNumber: response.ticketNumber ?? response.ticket_number };
 }
 
 export async function createTicket(input: CreateTicketInput) {

@@ -12,14 +12,14 @@ class MaintenanceTicketCreator
     {
         return DB::transaction(function () use ($data): MaintenanceTicket {
             $machine = Machine::query()->lockForUpdate()->findOrFail($data['machine_id']);
-            $plant = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $machine->plant));
+            $plant = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $machine->plant?->code ?? $machine->plant?->name ?? 'PLANT'));
             $machineCode = strtoupper(preg_replace('/[^A-Z0-9]+/i', '', $machine->code));
             $date = now()->format('dmy');
             $prefix = sprintf('%s-%s-%s-', $plant, $date, $machineCode);
             $lastSequence = MaintenanceTicket::query()
                 ->where('ticket_number', 'like', $prefix.'%')
                 ->pluck('ticket_number')
-                ->map(fn (string $number): int => (int) str($number)->afterLast('-'))
+                ->map(fn (string $number): int => (int) str($number)->afterLast('-')->toString())
                 ->max() ?? 0;
 
             $data['ticket_number'] = sprintf('%s%03d', $prefix, $lastSequence + 1);

@@ -52,10 +52,11 @@ function withQuery(path: string, filters: TicketFilters) {
   if (filters.search) query.set("search", filters.search);
   if (filters.status) query.set("status", filters.status);
   if (filters.priority) query.set("priority", filters.priority);
-  if (filters.plant) query.set("plant", filters.plant);
+  if (filters.plant) query.set("plant_id", filters.plant);
   if (filters.technician) query.set("technician", filters.technician);
   if (filters.sort) query.set("sort", filters.sort);
   if (filters.page) query.set("page", String(filters.page));
+  query.set("per_page", "10");
   const suffix = query.toString();
   return suffix ? `${path}${path.includes("?") ? "&" : "?"}${suffix}` : path;
 }
@@ -78,7 +79,11 @@ function normalizeTicket(
     (ticket.machine as { id?: number | string } | undefined)?.id ??
     "-") as number | string;
   const machine = ticket.machine as
+    { id?: number | string; code?: string; name?: string; plant?: { id?: number | string; code?: string; name?: string } } | undefined;
+  const plant = ticket.plant as
     { id?: number | string; code?: string; name?: string } | undefined;
+  const plantName = plant?.name ?? machine?.plant?.name;
+  const plantCode = plant?.code ?? machine?.plant?.code;
   const ticketNumber = ticket.ticket_number ?? ticket.number;
   const normalizedNumber = typeof ticketNumber === "string" || typeof ticketNumber === "number"
     ? String(ticketNumber)
@@ -92,11 +97,7 @@ function normalizeTicket(
       code: machine?.code ?? `Mesin #${machineId}`,
       name: machine?.name ?? `Mesin #${machineId}`,
     },
-    plant: String(
-      ticket.plant ??
-        ticket.plant_name ??
-        (ticket.plant_id ? `Plant #${ticket.plant_id}` : "-"),
-    ),
+    plant: plantName ?? plantCode ?? (ticket.plant_name as string | undefined) ?? (ticket.plant_id ? `Plant #${ticket.plant_id}` : "-"),
     location: String(ticket.location ?? "-"),
     problemType: String(ticket.problemType ?? ticket.problem_type ?? "Lainnya"),
     description: String(ticket.description ?? ""),

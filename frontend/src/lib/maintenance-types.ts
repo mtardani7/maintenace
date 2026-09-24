@@ -43,6 +43,7 @@ export type Incident = {
   actionTaken?: string;
   result?: string;
   status?: 'OPEN' | 'RESOLVED';
+  ticketNumber?: string;
   createdAt: string;
 };
 

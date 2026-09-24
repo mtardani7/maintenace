@@ -45,7 +45,7 @@ class IncidentController extends Controller
             $incident = Incident::create($data);
 
             if ($incident->status === 'OPEN') {
-                $ticketCreator->create([
+                $ticket = $ticketCreator->create([
                     'plant_id' => $incident->plant_id,
                     'machine_id' => $incident->machine_id,
                     'problem_type' => $incident->problem_type,
@@ -53,6 +53,7 @@ class IncidentController extends Controller
                     'source' => 'OPERATOR',
                     'reported_by' => $incident->reported_by,
                 ]);
+                $incident->setAttribute('ticket_number', $ticket->ticket_number);
             }
 
             return $incident;

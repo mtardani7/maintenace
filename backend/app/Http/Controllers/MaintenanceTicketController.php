@@ -12,20 +12,41 @@ use Illuminate\Validation\Rule;
 
 class MaintenanceTicketController extends Controller
 {
+    private function ensureMaintenance(Request $request): void
+    {
+        abort_unless($request->user()?->role === 'technician', 403, 'Only Maintenance users can modify tickets.');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $tickets = MaintenanceTicket::query()
-            ->with(['machine', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts'])
+            ->with(['plant', 'machine.plant', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts'])
+            ->when($request->filled('search'), function ($query) use ($request): void {
+                $search = trim($request->string('search')->toString());
+                $query->where(function ($ticketQuery) use ($search): void {
+                    $ticketQuery
+                        ->where('ticket_number', 'ilike', "%{$search}%")
+                        ->orWhere('problem_type', 'ilike', "%{$search}%")
+                        ->orWhere('description', 'ilike', "%{$search}%")
+                        ->orWhereHas('machine', fn ($machineQuery) => $machineQuery
+                            ->where('code', 'ilike', "%{$search}%")
+                            ->orWhere('name', 'ilike', "%{$search}%"));
+                });
+            })
             ->when($request->filled('plant_id'), fn ($query) => $query->where('plant_id', $request->integer('plant_id')))
             ->when($request->filled('machine_id'), fn ($query) => $query->where('machine_id', $request->integer('machine_id')))
-            ->latest()
-            ->paginate(min($request->integer('per_page', 20), 100));
+            ->when($request->filled('status'), fn ($query) => $query->where('status', strtoupper($request->string('status')->toString())))
+            ->when($request->filled('priority'), fn ($query) => $query->where('priority', strtoupper($request->string('priority')->toString())))
+            ->orderBy('created_at', $request->string('sort')->toString() === 'oldest' ? 'asc' : 'desc')
+            ->paginate(min(max($request->integer('per_page', 10), 1), 100));
 
         return response()->json($tickets);
     }
 
     public function store(Request $request, MaintenanceTicketCreator $creator): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         $data = $request->validate([
             'plant_id' => ['required', 'integer'],
             'machine_id' => ['required', 'integer'],
@@ -43,7 +64,7 @@ class MaintenanceTicketController extends Controller
 
     public function show(MaintenanceTicket $ticket): JsonResponse
     {
-        return response()->json($ticket->load(['machine', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
+        return response()->json($ticket->load(['plant', 'machine.plant', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
     }
 
     public function maintenanceUsers(): JsonResponse
@@ -56,6 +77,8 @@ class MaintenanceTicketController extends Controller
 
     public function action(Request $request, MaintenanceTicket $ticket, ?string $action = null): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         if ($ticket->status !== 'OPEN') {
             return response()->json(['message' => 'Only open tickets can be closed.'], 422);
         }
@@ -92,11 +115,13 @@ class MaintenanceTicketController extends Controller
             ]);
         });
 
-        return response()->json($ticket->fresh(['machine', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
+        return response()->json($ticket->fresh(['plant', 'machine.plant', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
     }
 
     public function update(Request $request, MaintenanceTicket $ticket): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         if ($ticket->status === 'CLOSED') {
             return response()->json(['message' => 'Closed tickets are historical records and cannot be edited.'], 422);
         }
@@ -113,11 +138,13 @@ class MaintenanceTicketController extends Controller
         ]);
         $ticket->update($data);
 
-        return response()->json($ticket->fresh(['machine', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
+        return response()->json($ticket->fresh(['plant', 'machine.plant', 'reporter', 'executor', 'actionBy', 'closedBy', 'spareParts']));
     }
 
-    public function destroy(MaintenanceTicket $ticket): JsonResponse
+    public function destroy(Request $request, MaintenanceTicket $ticket): JsonResponse
     {
+        $this->ensureMaintenance($request);
+
         if ($ticket->status === 'CLOSED') {
             return response()->json(['message' => 'Closed tickets are historical records and cannot be deleted.'], 422);
         }

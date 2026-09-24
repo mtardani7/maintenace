@@ -52,6 +52,11 @@ class MaintenanceTicket extends Model
         return $this->belongsTo(Machine::class);
     }
 
+    public function plant(): BelongsTo
+    {
+        return $this->belongsTo(Plant::class);
+    }
+
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');
